@@ -53,3 +53,56 @@ header, payload = unpack_message(raw_bytes)
 *   **Give it:** The raw bytes from `socket.recvfrom()`.
 *   **Get back:** A `Header` object and the `payload` bytes.
 *   **Careful:** Will raise `ProtocolError` if the packet is garbage (bad magic, bad CRC, etc.).
+
+---
+
+# Server Task Management (`task_manager.py`)
+
+This module handles the server-side logic for tracking tasks, managing their lifecycle, and ensuring we don't process the same result twice if a worker retransmits.
+
+**Note:** Use the `TaskManager` class to keep the server state clean. It tracks which worker is doing what and which tasks are finished.
+
+---
+
+## What’s Actually Happening?
+
+The server needs to stay organized when multiple workers are asking for work and sending back results:
+
+*   **State Tracking:** Every task goes through a lifecycle: `PENDING` -> `IN_FLIGHT` -> `COMPLETED`. This prevents the server from handing the same task to two different workers at the same time.
+*   **Duplicate Suppression:** In unreliable networks (UDP), a worker might send a result, not get an ACK, and send it again. `TaskManager` keeps a set of `completed_task_ids` to catch and ignore these duplicates.
+*   **Payload Management:** It stores the original task payloads and the results received from workers, associated with their unique `Task_ID`.
+
+---
+
+## Task Lifecycle
+
+| Status | Meaning |
+| :--- | :--- |
+| `PENDING` | Task is loaded and waiting for a worker to request it. |
+| `IN_FLIGHT` | Task has been dispatched to a worker but no result has been received yet. |
+| `COMPLETED` | Result received and recorded. The task is done. |
+
+---
+
+## The `TaskManager` Methods
+
+### `add_task(task_id, payload)`
+*   Registers a new task in the system.
+*   Initial status is set to `PENDING`.
+
+### `get_next_pending_task(worker_id)`
+```python
+task_id, payload = manager.get_next_pending_task(worker_id)
+```
+*   **What it does:** Finds the first `PENDING` task, marks it `IN_FLIGHT`, assigns it to the `worker_id`, and records the dispatch time.
+*   **Returns:** `(task_id, payload)` or `None` if nothing is left to do.
+
+### `process_result(task_id, result_payload)`
+```python
+success = manager.process_result(task_id, result_payload)
+```
+*   **What it does:** Records the result and marks the task `COMPLETED`.
+*   **Duplicate Check:** Returns `False` if the task was already completed (suppression). Returns `True` if this is the first time we're seeing this result.
+
+### `all_completed()`
+*   Returns `True` if every task registered has reached the `COMPLETED` state. Used to determine when the server can shut down.
