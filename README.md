@@ -1,108 +1,68 @@
-# Protocol Internals (`protocol.py`)
+================================================================================
+CSE361 — Computer Networks Major Task (Fall 2026)
+Project 2: RJDAP (Reliable Job Dispatch & Aggregation Protocol) — Phase 1
+================================================================================
 
-This is the implementation of the RJDAP protocol. It handles all the byte-level stuff—packing, unpacking, CRC checks, and header formatting over raw UDP.
+Team Members:
+- Omar Ahmed Abdel Hameed (24P0201)
+- Ahmed Mohamed Abd-Elmageed (2400136)
+- Osama Ibrahim Ali (23P0323)
+- Zyad Senousy (23P0139)
+- Mohamed Amr Nady (24P0477)
 
-**Note:** You shouldn't need to mess with bitwise ops or structs. Just use `pack_message` and `unpack_message`.
+Demo Video Link (5-Minute Walkthrough):
+[PASTE YOUR GOOGLE DRIVE / YOUTUBE LINK HERE — SET ACCESS TO "ANYONE WITH THE LINK CAN VIEW"]
 
----
+--------------------------------------------------------------------------------
+1. Prerequisites & Environment
+--------------------------------------------------------------------------------
+- Python 3.8+ (tested on Windows 10/11 and Linux/WSL2)
+- Standard library only (socket, struct, zlib, subprocess, datetime) — no external
+  packages or third-party networking libraries required.
 
-## What’s Actually Happening?
+--------------------------------------------------------------------------------
+2. Repository Structure
+--------------------------------------------------------------------------------
+- protocol.py      : Binary wire framing, 18-byte big-endian header packing/unpacking,
+                     and IEEE 802.3 CRC32 checksum validation.
+- task_manager.py  : Server-side task queue lifecycle (PENDING -> IN_FLIGHT ->
+                     COMPLETED) and duplicate result suppression.
+- mock_server.py   : Phase 1 UDP server prototype supporting normal task dispatch
+                     and network fault injection flags.
+- worker.py        : UDP worker client with WORKER_JOIN handshake and stop-and-wait
+                     ARQ retransmission (200ms timeout, max 5 attempts).
+- run_baseline.py  : Automated Phase 1 local baseline test script (launches server
+                     and worker, captures logs, and validates packet exchange).
+- README.md        : Internal developer documentation for protocol.py and task_manager.py.
 
-Basically, raw UDP just sends random bytes. This file makes sure those bytes mean something to our Python code:
+--------------------------------------------------------------------------------
+3. How to Run Locally
+--------------------------------------------------------------------------------
+Option A — Automated Baseline Test (Recommended for Verification):
+Run the automated baseline script from the project root directory:
 
-*   **Packing:** Turns your variables (Task ID, Worker ID, etc.) into an 18-byte big-endian header, sticks your payload on the end, and calculates a CRC32 checksum so we know if the data got mangled.
-*   **Unpacking:** Takes the incoming junk, checks the "Magic" bytes (`RJ`) and version, verifies the checksum, and gives you back a nice `Header` object and the raw payload.
-*   **Safety:** If a packet is too short, has a bad checksum, or the wrong version, it throws a `ProtocolError`. Catch this in your loops so the worker/server doesn't crash on bad network noise.
+    python run_baseline.py
 
----
+What this does:
+1. Launches mock_server.py on 127.0.0.1:5005.
+2. Launches worker.py (worker_id=1) and initiates the WORKER_JOIN -> TASK_DISPATCH
+   -> TASK_RESULT -> ACK_RESULT exchange over UDP.
+3. Saves timestamped execution logs into the `logs/` directory:
+   - logs/baseline_run_<YYYYMMDD_HHMMSS>.log
+   - logs/worker_1.log
+4. Verifies exit codes and required protocol events, printing:
+   "FINAL RESULT: BASELINE TEST PASSED SUCCESSFULLY!"
 
-## Wire Format (For the Curious)
+Option B — Manual Two-Terminal Execution & Fault Simulation:
+Terminal 1 (Start the Server):
+    python mock_server.py
 
-If you need to know exactly how the bytes look on the wire (or if you're writing the report):
+Optional fault-injection flags for testing reliability in Terminal 1:
+    python mock_server.py --drop-first-ack    # Drops 1st ACK to verify worker retry
+    python mock_server.py --wrong-ack-first   # Sends mismatched task_id ACK first
+    python mock_server.py --never-ack         # Tests worker max retry limit (5)
+    python mock_server.py --send-garbage      # Sends malformed bytes to test CRC/header check
 
-**Header Layout (18 Bytes Fixed)**
-*   **Format:** `!HBB I HBB H I` (Big-Endian)
-
-| Field | Size | Type | What it is |
-| :--- | :--- | :--- | :--- |
-| `Magic` | 2B | `uint16` | `0x524A` (The 'RJ' identifier) |
-| `Version` | 1B | `uint8` | Currently `1` |
-| `Msg_Type` | 1B | `uint8` | ID from 1 to 5 |
-| `Task_ID` | 4B | `uint32` | Unique ID for the job |
-| `Worker_ID` | 2B | `uint16` | ID of the worker |
-| `Attempt_Num` | 1B | `uint8` | Which attempt this is |
-| `Reserved` | 1B | `uint8` | Just `0x00` for alignment |
-| `Payload_Len`| 2B | `uint16` | Body length (0–512) |
-| `Checksum` | 4B | `uint32` | CRC32 of the payload |
-
----
-
-## The Functions
-
-### `pack_message(...)`
-```python
-packet = pack_message(msg_type, task_id=0, worker_id=0, attempt_num=0, payload=b"")
-```
-*   **Give it:** The message type and any IDs/payload.
-*   **Get back:** A `bytes` object ready for `socket.sendto()`.
-
-### `unpack_message(data)`
-```python
-header, payload = unpack_message(raw_bytes)
-```
-*   **Give it:** The raw bytes from `socket.recvfrom()`.
-*   **Get back:** A `Header` object and the `payload` bytes.
-*   **Careful:** Will raise `ProtocolError` if the packet is garbage (bad magic, bad CRC, etc.).
-
----
-
-# Server Task Management (`task_manager.py`)
-
-This module handles the server-side logic for tracking tasks, managing their lifecycle, and ensuring we don't process the same result twice if a worker retransmits.
-
-**Note:** Use the `TaskManager` class to keep the server state clean. It tracks which worker is doing what and which tasks are finished.
-
----
-
-## What’s Actually Happening?
-
-The server needs to stay organized when multiple workers are asking for work and sending back results:
-
-*   **State Tracking:** Every task goes through a lifecycle: `PENDING` -> `IN_FLIGHT` -> `COMPLETED`. This prevents the server from handing the same task to two different workers at the same time.
-*   **Duplicate Suppression:** In unreliable networks (UDP), a worker might send a result, not get an ACK, and send it again. `TaskManager` keeps a set of `completed_task_ids` to catch and ignore these duplicates.
-*   **Payload Management:** It stores the original task payloads and the results received from workers, associated with their unique `Task_ID`.
-
----
-
-## Task Lifecycle
-
-| Status | Meaning |
-| :--- | :--- |
-| `PENDING` | Task is loaded and waiting for a worker to request it. |
-| `IN_FLIGHT` | Task has been dispatched to a worker but no result has been received yet. |
-| `COMPLETED` | Result received and recorded. The task is done. |
-
----
-
-## The `TaskManager` Methods
-
-### `add_task(task_id, payload)`
-*   Registers a new task in the system.
-*   Initial status is set to `PENDING`.
-
-### `get_next_pending_task(worker_id)`
-```python
-task_id, payload = manager.get_next_pending_task(worker_id)
-```
-*   **What it does:** Finds the first `PENDING` task, marks it `IN_FLIGHT`, assigns it to the `worker_id`, and records the dispatch time.
-*   **Returns:** `(task_id, payload)` or `None` if nothing is left to do.
-
-### `process_result(task_id, result_payload)`
-```python
-success = manager.process_result(task_id, result_payload)
-```
-*   **What it does:** Records the result and marks the task `COMPLETED`.
-*   **Duplicate Check:** Returns `False` if the task was already completed (suppression). Returns `True` if this is the first time we're seeing this result.
-
-### `all_completed()`
-*   Returns `True` if every task registered has reached the `COMPLETED` state. Used to determine when the server can shut down.
+Terminal 2 (Start the Worker):
+    python worker.py [worker_id] [server_ip] [server_port]
+    # Default: python worker.py 1 127.0.0.1 5005
