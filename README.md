@@ -11,7 +11,7 @@ Team Members:
 - Mohamed Amr Nady (24P0477)
 
 Demo Video Link (5-Minute Walkthrough):
-[PASTE YOUR GOOGLE DRIVE / YOUTUBE LINK HERE — SET ACCESS TO "ANYONE WITH THE LINK CAN VIEW"]
+https://drive.google.com/file/d/1vj3QFIOKCD_ijq8Of1PhjH5vRLTmkXws/view?usp=sharing
 
 --------------------------------------------------------------------------------
 1. Prerequisites & Environment
