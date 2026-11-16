@@ -1,0 +1,23 @@
+=== RJDAP Phase 1 Baseline Test (20261116_195625) ===
+
+--- SERVER STDOUT ---
+[2026-11-16 19:56:25.861] Listening on 127.0.0.1:5005
+[2026-11-16 19:56:27.037] RECV WORKER_JOIN task_id=0 attempt_num=0 payload_len=0
+[2026-11-16 19:56:27.037] WORKER CONNECTED: worker_id=1 IP=127.0.0.1 PORT=50581
+[2026-11-16 19:56:27.038] SEND TASK_DISPATCH task_id=1 attempt_num=0 payload_len=24
+[2026-11-16 19:56:27.073] RECV TASK_RESULT task_id=1 attempt_num=1 payload_len=9
+[2026-11-16 19:56:27.073] RESULT task_id=1 payload=done: 123
+[2026-11-16 19:56:27.074] SEND ACK_RESULT task_id=1 attempt_num=1 payload_len=0
+
+--- SERVER STDERR ---
+
+--- WORKER STDOUT ---
+[2026-11-16 19:56:27.037] msg_type=WORKER_JOIN task_id=0 attempt_num=0 payload_len=0 SEND WORKER_JOIN server=127.0.0.1:5005
+[2026-11-16 19:56:27.061] msg_type=TASK_DISPATCH task_id=1 attempt_num=0 payload_len=24 RECV TASK_DISPATCH
+[2026-11-16 19:56:27.070] msg_type=TASK_DISPATCH task_id=1 attempt_num=0 payload_len=24 TASK payload=dummy_payload_for_task_1
+[2026-11-16 19:56:27.073] msg_type=TASK_RESULT task_id=1 attempt_num=1 payload_len=9 SEND TASK_RESULT
+[2026-11-16 19:56:27.076] msg_type=ACK_RESULT task_id=1 attempt_num=1 payload_len=0 RECV ACK_RESULT
+[2026-11-16 19:56:27.079] msg_type=ACK_RESULT task_id=1 attempt_num=1 payload_len=0 RECV ACK_RESULT confirmation
+
+--- WORKER STDERR ---
+

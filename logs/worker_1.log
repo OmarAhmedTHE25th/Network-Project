@@ -1,0 +1,15 @@
+[2026-11-16 19:56:27.037] msg_type=WORKER_JOIN task_id=0 attempt_num=0 payload_len=0 SEND WORKER_JOIN server=127.0.0.1:5005
+[2026-11-16 19:56:27.061] msg_type=TASK_DISPATCH task_id=1 attempt_num=0 payload_len=24 RECV TASK_DISPATCH
+[2026-11-16 19:56:27.070] msg_type=TASK_DISPATCH task_id=1 attempt_num=0 payload_len=24 TASK payload=dummy_payload_for_task_1
+[2026-11-16 19:56:27.073] msg_type=TASK_RESULT task_id=1 attempt_num=1 payload_len=9 SEND TASK_RESULT
+[2026-11-16 19:56:27.076] msg_type=ACK_RESULT task_id=1 attempt_num=1 payload_len=0 RECV ACK_RESULT
+[2026-11-16 19:56:27.079] msg_type=ACK_RESULT task_id=1 attempt_num=1 payload_len=0 RECV ACK_RESULT confirmation
+[2026-11-16 19:57:52.023] msg_type=WORKER_JOIN task_id=0 attempt_num=0 payload_len=0 SEND WORKER_JOIN server=127.0.0.1:5005
+[2026-11-16 19:57:52.028] msg_type=INVALID task_id=- attempt_num=- payload_len=8 BAD PACKET (ProtocolError) from ('127.0.0.1', 5005): Packet truncated: got 8 bytes, expected at least 18
+[2026-11-16 19:57:52.031] msg_type=TASK_DISPATCH task_id=1 attempt_num=0 payload_len=24 RECV TASK_DISPATCH
+[2026-11-16 19:57:52.032] msg_type=TASK_DISPATCH task_id=1 attempt_num=0 payload_len=24 TASK payload=dummy_payload_for_task_1
+[2026-11-16 19:57:52.034] msg_type=TASK_RESULT task_id=1 attempt_num=1 payload_len=9 SEND TASK_RESULT
+[2026-11-16 19:57:52.253] msg_type=TASK_RESULT task_id=1 attempt_num=1 payload_len=9 ACK timeout; retrying
+[2026-11-16 19:57:52.255] msg_type=TASK_RESULT task_id=1 attempt_num=2 payload_len=9 SEND TASK_RESULT
+[2026-11-16 19:57:52.259] msg_type=ACK_RESULT task_id=1 attempt_num=2 payload_len=0 RECV ACK_RESULT
+[2026-11-16 19:57:52.261] msg_type=ACK_RESULT task_id=1 attempt_num=2 payload_len=0 RECV ACK_RESULT confirmation
