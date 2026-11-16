@@ -1,7 +1,7 @@
-================================================================================
-CSE361 — Computer Networks Major Task (Fall 2026)
-Project 2: RJDAP (Reliable Job Dispatch & Aggregation Protocol) — Phase 1
-================================================================================
+# CSE361 — Computer Networks Major Task (Fall 2026)
+### Project 2: RJDAP (Reliable Job Dispatch & Aggregation Protocol) — Phase 1
+
+
 
 Team Members:
 - Omar Ahmed Abdel Hameed (24P0201)
