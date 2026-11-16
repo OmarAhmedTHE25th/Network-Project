@@ -4,7 +4,7 @@ import time
 import os
 from datetime import datetime
 
-SERVER_SCRIPT = "server.py"
+SERVER_SCRIPT = "mock_server.py"
 WORKER_SCRIPT = "worker.py"
 TIMEOUT_SECONDS = 10
 LOG_DIR = "logs"
@@ -42,7 +42,7 @@ def run_baseline_test():
     worker_proc = None
 
     try:
-        print(f"[*] Launching {SERVER_SCRIPT} on 127.0.0.1:9999...")
+        print(f"[*] Launching {SERVER_SCRIPT} on 127.0.0.1:5005...")
         server_proc = subprocess.Popen(
             [sys.executable, "-u", SERVER_SCRIPT],
             stdout=subprocess.PIPE,

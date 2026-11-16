@@ -1,3 +1,4 @@
+
 """A tiny one-task RJDAP server for testing worker.py."""
 
 import datetime
@@ -49,7 +50,9 @@ def main():
     never_ack = "--never-ack" in options
     wrong_ack_first = "--wrong-ack-first" in options
     send_garbage = "--send-garbage" in options
+
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
     try:
         server_socket.bind((SERVER_IP, SERVER_PORT))
         log(f"Listening on {SERVER_IP}:{SERVER_PORT}")
@@ -57,6 +60,7 @@ def main():
         # Wait for a worker to join before assigning the single test task.
         while True:
             data, worker_address = server_socket.recvfrom(1024)
+
             try:
                 header, payload = unpack_message(data)
             except ProtocolError as error:
@@ -64,9 +68,18 @@ def main():
                 continue
 
             log_packet("RECV", header)
+
             if header.msg_type == MessageType.WORKER_JOIN:
                 worker_id = header.worker_id
+
+                # Log worker connection details clearly.
+                log(
+                    f"WORKER CONNECTED: worker_id={worker_id} "
+                    f"IP={worker_address[0]} PORT={worker_address[1]}"
+                )
+
                 break
+
             log(f"IGNORE {header.msg_type.name}; waiting for WORKER_JOIN")
 
         if send_garbage:
@@ -80,7 +93,9 @@ def main():
             worker_id=worker_id,
             payload=TASK_PAYLOAD,
         )
+
         server_socket.sendto(dispatch, worker_address)
+
         log(
             f"SEND TASK_DISPATCH task_id={TASK_ID} attempt_num=0 "
             f"payload_len={len(TASK_PAYLOAD)}"
@@ -88,8 +103,11 @@ def main():
 
         first_result = True
         result_count = 0
+        result_processed = False
+
         while True:
             data, address = server_socket.recvfrom(1024)
+
             try:
                 header, payload = unpack_message(data)
             except ProtocolError as error:
@@ -97,17 +115,40 @@ def main():
                 continue
 
             log_packet("RECV", header)
-            if header.msg_type != MessageType.TASK_RESULT or header.task_id != TASK_ID:
+
+            if (
+                header.msg_type != MessageType.TASK_RESULT
+                or header.task_id != TASK_ID
+            ):
                 log("IGNORE packet; waiting for the result of the test task")
                 continue
 
-            log(f"RESULT task_id={header.task_id} payload={payload.decode('utf-8', errors='replace')}")
             result_count += 1
+
+            # Process the task result only once.
+            if not result_processed:
+                log(
+                    f"RESULT task_id={header.task_id} "
+                    f"payload={payload.decode('utf-8', errors='replace')}"
+                )
+                result_processed = True
+            else:
+                log(
+                    f"DUPLICATE TASK_RESULT task_id={header.task_id} "
+                    f"attempt_num={header.attempt_num}; "
+                    "already processed, ACK again"
+                )
+
             if never_ack:
                 log(f"NEVER ACK_RESULT attempt_num={header.attempt_num}")
+
                 if result_count >= MAX_RESULT_ATTEMPTS:
-                    log(f"Received {MAX_RESULT_ATTEMPTS} results; stopping without an ACK")
+                    log(
+                        f"Received {MAX_RESULT_ATTEMPTS} results; "
+                        "stopping without an ACK"
+                    )
                     return 0
+
                 continue
 
             if first_result and drop_first_ack:
@@ -117,13 +158,16 @@ def main():
 
             if first_result and wrong_ack_first:
                 first_result = False
+
                 wrong_ack = pack_message(
                     MessageType.ACK_RESULT,
                     task_id=TASK_ID + 998,
                     worker_id=worker_id,
                     attempt_num=header.attempt_num,
                 )
+
                 server_socket.sendto(wrong_ack, address)
+
                 log(
                     f"SEND wrong ACK_RESULT task_id={TASK_ID + 998} "
                     f"attempt_num={header.attempt_num} payload_len=0"
@@ -136,12 +180,20 @@ def main():
                 worker_id=worker_id,
                 attempt_num=header.attempt_num,
             )
+
             server_socket.sendto(ack, address)
-            log(f"SEND ACK_RESULT task_id={TASK_ID} attempt_num={header.attempt_num} payload_len=0")
+
+            log(
+                f"SEND ACK_RESULT task_id={TASK_ID} "
+                f"attempt_num={header.attempt_num} payload_len=0"
+            )
+
             return 0
+
     finally:
         server_socket.close()
 
 
 if __name__ == "__main__":
     sys.exit(main())
+
